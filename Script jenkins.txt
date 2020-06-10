@@ -1,0 +1,133 @@
+### Define local variables
+export EAR_NAME="BrandsMart.ear"
+export REV_FILE="/data/app/release/builds/current.buildnumber"
+export BUILD_SERVER="172.24.80.42"
+export PROD_ADMIN_SERVER="172.24.32.47"
+export PROD_WEB_ONE="172.24.32.43"
+export PROD_WEB_TWO="172.24.32.44"
+export PROD_WWW_SERVERS="172.24.32.43 172.24.32.44"
+export REL_DIR="/data/app/release/production_builds"
+export PROD_HTDOCS="/data/app/content/htdocs"
+
+#Copying edit.lok to build server
+scp -r svc_app@${PROD_ADMIN_SERVER}:/data/app/weblogic/user_projects/domains/brandsmart/edit.lok /data/app/
+
+if grep -q "acquired=" "/data/app/edit.lok"
+then
+echo  "Cannot deploy the build. Please release the lock manually from weblogic console."
+cd /data/app && rm -rf edit.lok
+
+else
+
+#Continuing Deployment
+
+
+# if no build number specified
+# choose the last build deployed
+if [ -z  ${BLD_NUMBER} ]
+then     
+     echo " No BLD_NUMBER provided in input, Exiting the script now"
+     echo " Please correct the BLD_NUMBER value and re-trigger the job"
+     exit 1
+fi
+
+#Backup the Current EAR in the Admin Server
+echo "Backing up current build to Prev location"
+ssh svc_app@${PROD_ADMIN_SERVER} "mkdir -p /data/app/content/previous_ear/ && cd /data/app/content/previous_ear/ && rm -rf *.ear && mkdir -p /data/app/content/brandsmart_ear/${EAR_NAME} && mv /data/app/content/brandsmart_ear/${EAR_NAME} /data/app/content/previous_ear/"
+
+
+#Sync the EAR to Production Deploy Location
+echo "Copying new release files to /data/app/content/brandsmart_ear"
+ssh svc_app@${PROD_ADMIN_SERVER} "scp -r ${REL_DIR}/${BLD_NUMBER}/b*/BrandsMart* /data/app/content/brandsmart_ear/"
+ssh svc_app@${PROD_ADMIN_SERVER} "cd /data/app/content/brandsmart_ear && tar -xzf BrandsMart.ear.tar.gz && rm -rf BrandsMart.ear.tar.gz"
+#Copying axis2.xml
+ssh svc_app@${PROD_ADMIN_SERVER} "cp -p /data/app/axis/axis2.xml /data/app/content/brandsmart_ear/BrandsMart.ear/bm-webservices.war/WEB-INF/conf/"
+
+
+#Copying and Syncing Static Content to Prod Admin Server
+echo "Copying and Syncing Static Content to Prod Admin Server"
+ssh svc_app@${PROD_ADMIN_SERVER} "scp -r ${REL_DIR}/${BLD_NUMBER}/b*/assets* /data/app/content/"
+ssh svc_app@${PROD_ADMIN_SERVER} "cd /data/app/content/ && tar -xzf assets.tar.gz && rm -rf assets.tar.gz "
+echo "Deploying static content files to ${PROD_ADMIN_SERVER} "
+ssh svc_app@${PROD_ADMIN_SERVER} "rsync -vaz /data/app/content/assets/ /data/app/content/htdocs && cd /data/app/content/ && rm -rf assets "
+
+#Copying and Syncing Static Content to Prod Web Servers
+for DEPLOY_SERVER in $PROD_WWW_SERVERS
+do
+  echo "Copying static content files to ${DEPLOY_SERVER} "
+  ssh svc_app@${PROD_ADMIN_SERVER} "scp -r ${REL_DIR}/${BLD_NUMBER}/b*/assets* svc_app@${DEPLOY_SERVER}:/data/app/content/"
+  ssh svc_app@${PROD_ADMIN_SERVER} "ssh -t svc_app@${DEPLOY_SERVER} 'cd /data/app/content/ && tar -xvzf assets.tar.gz && rm -rf assets.tar.gz' "
+  echo "Deploying static content files to ${DEPLOY_SERVER} "
+  ssh svc_app@${PROD_ADMIN_SERVER} "ssh -t svc_app@${DEPLOY_SERVER} 'rsync -vaz /data/app/content/assets/ /data/app/content/htdocs && cd /data/app/content/ && rm -rf assets' "
+done
+
+echo "Deploying Release Code on prod_slm1,prod_aux1a and prod_aux1b"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && java weblogic.Deployer -adminurl t3://127.0.0.1:7001 -user weblogic -password weblogic1 -redeploy -name BrandsMart -targets prod_slm1,prod_aux1a,prod_aux1b -source /data/app/content/brandsmart_ear/BrandsMart.ear </dev/null 2>/dev/null"
+
+echo "Restarting prod_slm1,prod_aux1a and prod_aux1b"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_slm1 </dev/null 2>/dev/null"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_aux1a </dev/null 2>/dev/null"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_aux1b </dev/null 2>/dev/null"
+
+echo "Removing prod_store1a,prod_store1b from Cluster for Storefronts"
+ssh svc_app@${PROD_WEB_ONE} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl.conf.first ../mod_wl.conf && echo S3rvc123 | sudo -S service httpd reload"
+#ssh svc_app@${PROD_WEB_ONE} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl_node.conf.first ../mod_wl_node.conf && echo S3rvc123 | sudo -S service httpd reload"
+ssh svc_app@${PROD_WEB_TWO} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl.conf.first ../mod_wl.conf && echo S3rvc123 | sudo -S service httpd reload"
+#ssh svc_app@${PROD_WEB_TWO} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl_node.conf.first ../mod_wl_node.conf && echo S3rvc123 | sudo -S service httpd reload"
+
+echo "Deploying Release Code on first set of storefronts"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && java weblogic.Deployer -adminurl t3://127.0.0.1:7001 -user weblogic -password weblogic1 -redeploy -name BrandsMart -targets prod_store1a,prod_store1b -source /data/app/content/brandsmart_ear/BrandsMart.ear </dev/null 2>/dev/null"
+
+echo "Restarting first set of storefronts"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_store1a </dev/null 2>/dev/null"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_store1b </dev/null 2>/dev/null"
+
+echo "Adding prod_store1a,prod_store1b and removing prod_store1c,prod_store2a"
+ssh svc_app@${PROD_WEB_ONE} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl.conf.second ../mod_wl.conf && echo S3rvc123 | sudo -S service httpd reload"
+#ssh svc_app@${PROD_WEB_ONE} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl_node.conf.second ../mod_wl_node.conf && echo S3rvc123 | sudo -S service httpd reload"
+ssh svc_app@${PROD_WEB_TWO} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl.conf.second ../mod_wl.conf && echo S3rvc123 | sudo -S service httpd reload"
+#ssh svc_app@${PROD_WEB_TWO} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl_node.conf.second ../mod_wl_node.conf && echo S3rvc123 | sudo -S service httpd reload"
+
+echo "Deploying Release Code on second set of storefronts"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && java weblogic.Deployer -adminurl t3://127.0.0.1:7001 -user weblogic -password weblogic1 -redeploy -name BrandsMart -targets prod_store1c,prod_store2a -source /data/app/content/brandsmart_ear/BrandsMart.ear </dev/null 2>/dev/null"
+
+echo "Restarting second set of storefronts"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_store1c </dev/null 2>/dev/null"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_store2a </dev/null 2>/dev/null"
+
+echo "Adding prod_store1c,prod_store2a and removing prod_store2b,prod_store2c,prod_store2d,prod_store1d"
+ssh svc_app@${PROD_WEB_ONE} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl.conf.third ../mod_wl.conf && echo S3rvc123 | sudo -S service httpd reload"
+#ssh svc_app@${PROD_WEB_ONE} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl_node.conf.third ../mod_wl_node.conf && echo S3rvc123 | sudo -S service httpd reload"
+ssh svc_app@${PROD_WEB_TWO} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl.conf.third ../mod_wl.conf && echo S3rvc123 | sudo -S service httpd reload"
+#ssh svc_app@${PROD_WEB_TWO} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl_node.conf.third ../mod_wl_node.conf && echo S3rvc123 | sudo -S service httpd reload"
+
+echo "Deploying Release Code on third set of storefronts"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && java weblogic.Deployer -adminurl t3://127.0.0.1:7001 -user weblogic -password weblogic1 -redeploy -name BrandsMart -targets prod_store2b,prod_store2c,prod_store1d,prod_store2d -source /data/app/content/brandsmart_ear/BrandsMart.ear </dev/null 2>/dev/null"
+
+echo "Restarting third set of storefronts"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_store2b </dev/null 2>/dev/null"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_store2c </dev/null 2>/dev/null"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_store1d </dev/null 2>/dev/null"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_store2d </dev/null 2>/dev/null"
+
+echo "Adding prod_store2b and prod_store2c in apache"
+ssh svc_app@${PROD_WEB_ONE} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl.conf ../mod_wl.conf && echo S3rvc123 | sudo -S service httpd reload"
+#ssh svc_app@${PROD_WEB_ONE} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl_node.conf ../mod_wl_node.conf && echo S3rvc123 | sudo -S service httpd reload"
+ssh svc_app@${PROD_WEB_TWO} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl.conf ../mod_wl.conf && echo S3rvc123 | sudo -S service httpd reload"
+#ssh svc_app@${PROD_WEB_TWO} "source /etc/profile.d/bmenv.sh && cd /etc/httpd/conf.d/mod_backups && cp -r mod_wl_node.conf ../mod_wl_node.conf && echo S3rvc123 | sudo -S service httpd reload"
+
+echo "Deploying Release Code on prod_preview and prod_bcc"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && java weblogic.Deployer -adminurl t3://127.0.0.1:7001 -user weblogic -password weblogic1 -redeploy -name BrandsMart -targets prod_preview,prod_bcc,prod_bots -source /data/app/content/brandsmart_ear/BrandsMart.ear </dev/null 2>/dev/null"
+
+echo "Restarting prod_preview and prod_bcc"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_preview </dev/null 2>/dev/null"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_bcc </dev/null 2>/dev/null"
+ssh svc_app@${PROD_ADMIN_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl restartjvm prod_bots </dev/null 2>/dev/null"
+
+
+#Removing edit.lok file
+
+cd /data/app/ && rm -rf edit.lok
+
+fi
+

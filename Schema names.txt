@@ -1,0 +1,43 @@
+impdp  "'/ as sysdba'" dumpfile=DUMP_NEW_DIR:BRND_PUB_06-Sept-19.dmp REMAP_SCHEMA=BRND_PUB:BRND_DEVPUB remap_tablespace=BRND_PUB:BRND_DEVPUB table_exists_action=replace logfile=DUMP_NEW_DIR:brnd_devpub.log
+
+ALTER TABLESPACE brnd_devpub ADD DATAFILE '/home/oracle/brnd_devpub2.dbf' SIZE 52428800 AUTOEXTEND ON NEXT 8388608 MAXSIZE 30720M
+
+drop user brnd_devpub cascade;
+drop tablespace brnd_devpub;
+
+brnd_devcore, brnd_devcata, brnd_devcatb, brnd_pub, brnd_devcore_prv, brnd_devcata_prv, brnd_devcatb_prv
+
+
+brnd_uatcore, brnd_uatcata, brnd_uatcatb, brnd_uatpub, brnd_uatcore_prv, brnd_uatcata_prv, brnd_uatcatb_prv
+
+Schema Names
+
+BRND_CORE
+
+BRND_CORE_PRV
+
+BRND_CATA
+
+BRND_CATB
+
+BRND_CATA_PRV
+
+BRND_CATB_PRV
+
+BRND_PUB
+
+Schema Password
+
+brnd30r3
+
+brnd30r3prv
+
+brnd3cta
+
+brnd3ctb
+
+brnd3ctaprv
+
+brnd3ctbprv
+
+brndc3pub

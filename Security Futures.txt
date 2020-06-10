@@ -1,0 +1,27 @@
+1.	Update & Upgrade Installed Linux Packages.
+2.	Remove unnecessary packages
+3.	Password Rules
+a.	Detect Weak Passwords
+b.	Verify no account has empty passwords
+c.	Set Password Rules
+d.	Set Password Expiration
+4.	Disable USB Devices
+5.	Detect all world-writable files
+a.	Detect and modify the permissions
+6.	Configure IPTables to block common attacks (Currently no iptables are configured)
+7.	Install Logwatch to monitor suspicious log messages
+8.	Enable auditd to check read/write events
+9.	Secure Apache Server by enabling TaceEnable off 
+10.	Install and configure UFW (Uncomplicated Firewall)
+a.	It will secure ssh, http, ftp (we can control unidentified downloads here)
+11.	SSH Configuration re-check
+12.	Disable Telnet
+13.	Sysctl recheck with required security options
+a.	net.ipv4.ip_forward 0
+b.	etc
+14.	Lock user accounts after failed attempts with Fail2Ban
+15.	Root user timeout configuration
+16.	Scan for rootkits
+a.	server could be intercepting login details, concealing malware, providing a backdoor for an attacker, or even remotely controlling your server as part of a botnet
+ 
+The all above security points are not implemented in our existing servers.   Hence, it is important to implement and secure the server from malicious attacks.

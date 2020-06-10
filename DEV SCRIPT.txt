@@ -1,0 +1,51 @@
+### Define local variables
+export EAR_NAME="BrandsMart.ear"
+export REV_FILE="/data/app/release/builds/current.buildnumber"
+export BUILD_SERVER="172.24.80.42"
+export DEPLOY_SERVER="172.24.64.109"
+export REL_DIR="/data/app/release/builds"
+
+# if no build number specified
+# choose the last build deployed
+if [ -z  ${BLD_NUMBER} ]
+then     
+     #BLD_NUMBER=$(ssh svc_app@${BUILD_SERVER} "cat ${REV_FILE}")
+     BLD_NUMBER=$(cat ${REV_FILE})
+fi
+
+echo "Enabling Maintenance page"
+	ssh svc_app@172.24.64.109 "source /etc/profile.d/bmenv.sh \
+		&& touch /data/app/content/htdocs/maintenance.txt </dev/null 2>/dev/null "
+
+echo "Backing up current build to Prev location"
+ssh svc_app@${DEPLOY_SERVER} "mkdir -p /data/app/content/previous_ear/ && cd /data/app/content/previous_ear/ && rm -rf *.ear && mv /data/app/content/brandsmart_ear/${EAR_NAME} /data/app/content/previous_ear/"
+
+echo "Copying new release files to ${DEPLOY_SERVER}"
+#Copying BrandsMart EAR to Dev Server
+scp -r ${REL_DIR}/${BLD_NUMBER}/b*/BrandsMart* svc_app@${DEPLOY_SERVER}:/data/app/content/brandsmart_ear/
+ssh svc_app@${DEPLOY_SERVER} "cd /data/app/content/brandsmart_ear && tar -xvzf BrandsMart.ear.tar.gz && rm -rf BrandsMart.ear.tar.gz"
+
+#Copying Static EAR to Dev Server
+scp -r ${REL_DIR}/${BLD_NUMBER}/b*/assets* svc_app@${DEPLOY_SERVER}:/data/app/content/ 
+ssh svc_app@${DEPLOY_SERVER} "cd /data/app/content/ && tar -xvzf assets.tar.gz && rm -rf assets.tar.gz"
+
+
+#Syncing Static Content
+ssh svc_app@${DEPLOY_SERVER} "rsync -vaz /data/app/content/assets/ /data/app/content/htdocs && rm -rf assets"
+
+#Copying axis2.xml
+ssh svc_app@${DEPLOY_SERVER} "cp -p /data/app/axis/axis2.xml /data/app/content/brandsmart_ear/BrandsMart.ear/bm-webservices.war/WEB-INF/conf/"
+
+echo "Deploying Release Code"
+ssh svc_app@${DEPLOY_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl deployATG </dev/null 2>/dev/null"
+
+echo "Stopping Servers"
+ssh svc_app@${DEPLOY_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl stopall </dev/null 2>/dev/null"
+
+echo "Starting Servers"
+ssh svc_app@${DEPLOY_SERVER} "source /etc/profile.d/bmenv.sh && /data/app/bin/wlctl startall </dev/null 2>/dev/null"
+
+
+echo "Removing Maintenance page"
+	ssh svc_app@172.24.64.109 "source /etc/profile.d/bmenv.sh \
+    && /bin/rm -f /data/app/content/htdocs/maintenance.txt </dev/null 2>/dev/null " 

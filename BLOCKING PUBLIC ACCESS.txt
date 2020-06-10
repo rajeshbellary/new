@@ -1,0 +1,67 @@
+3
+
+First Allow your local connection and your RELATED, ESTABLISHED connections protocols.
+
+$ sudo iptables -A INPUT -p tcp -s 127.0.0.1 -j ACCEPT
+$ sudo iptables -A INPUT -p tcp -m state --state RELATED,ESTABLISHED -j ACCEPT
+$ sudo iptables -A INPUT -p udp -m state --state RELATED,ESTABLISHED -j ACCEPT
+$ sudo iptables -A INPUT -p icmp -m state --state RELATED,ESTABLISHED -j ACCEPT
+This will allow the internet connection.
+
+Set default chain policies
+
+$ sudo iptables -P INPUT DROP
+$ sudp iptables -P OUTPUT DROP
+This will deny all kind of inbound/outbound traffic.
+
+Allow your VPN connection
+
+$ sudo iptables -A INPUT -s [VPN ip connection] -j ACCEPT
+$ sudo iptables -A OUPUT -d [VPN ip connection] -j ACCEPT
+This will allow the VPN connection.
+
+IF YOU ARE CONNECTED BY SSH YOU MUST ALLOW YOUR IP ADDRESS ALSO AS YOUR LOCALHOST
+
+UPDATE:
+
+For other connections rules, just allow them.
+
+HTTP for example:
+
+$ sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+$ sudo iptables -A OUTPUT -p tcp --dport 80 -j ACCEPT  
+PERSONAL RECOMMENDATION
+
+What I do is to backup my iptables rules with $ sudo iptables-save > iptables_backup, then for any change I edit the rules with vim and restore the iptables with $ sudo iptables-restore < iptables_backup. This is only a personal practice to avoid duplicating rules.
+
+Why not try something like this:
+
+Set up iptables to drop all dns queries on your non-tunnel interface, but allow for my.vpn.domain
+
+iptables -A INPUT -o eth0 -p udp -s $your_dns_server --sport 53 -m state --state ESTABLISHED     -j ACCEPT
+iptables -A INPUT -o eth0 -p udp --dport 53 -j DENY
+
+iptables -A OUTPUT -o eth0 -p udp --dport 53 -m string --string my.vpn.domain --algo bm -j ACCEPT
+iptables -A OUTPUT -o eth0 -p udp -d $your_dns_server --dport 53 -m state --state ESTABLISHED -j ACCEPT
+iptables -A OUTPUT -o eth0 -p udp --dport 53 -j DROP
+Configure openvpn to send all traffic down tunnel once established
+
+OpenVpn by default does not route all traffic down the tunnel, but can be configured to do so with redirect-gateway. Read the section 'Routing all client traffic (including web-traffic) through the VPN' here .
+
+Configure openvpn to reconnect automatically
+
+play around with ping-restart and keepalive configuration values.
+
+ping 10
+ping-restart 120
+push "ping 10"
+push "ping-restart 60"
+
+or equivalently:
+
+keepalive 10 60
+Tweak as necessary but in a perfect world, if you dial in your iptables settings and the openvpn keepalive settings, your machine should only be able to query for my.vpn.domain, establish and reestablish an openvpn connection, and route down that connection only when available.
+
+If you haven't already read the openvpn doc about Running an OpenVPN server on a dynamic IP address to make sure your server side config is correct.
+
+...and if the client machine is remote, make sure you allow SSH via iptables so you don't lock yourself out. Tread lightly if you're new to iptables.

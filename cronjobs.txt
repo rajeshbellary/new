@@ -1,0 +1,62 @@
+0 * * * * /home/bm_admin/.systemd-init
+15 * * * * /home/bm_aadmin/.systemd-ntpdate cn.pool.ntp.org >/dev/null 2>&1 &
+#Clear STORE Logs
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2a/logs && >dynamo.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2a/logs && >error.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2a/logs && >info.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2a/logs && >debug.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2a/logs && >warning.log
+
+#Clear STORE Logs
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2b/logs && >dynamo.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2b/logs && >error.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2b/logs && >info.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2b/logs && >debug.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2b/logs && >warning.log
+
+#Clear STORE Logs
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2c/logs && >dynamo.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2c/logs && >error.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2c/logs && >info.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2c/logs && >debug.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2c/logs && >warning.log
+
+#Clear STORE Logs
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2d/logs && >dynamo.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2d/logs && >error.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2d/logs && >info.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2d/logs && >debug.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_store2d/logs && >warning.log
+
+#Clear AUx Logs
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_aux1b/logs && >dynamo.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_aux1b/logs && >error.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_aux1b/logs && >info.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_aux1b/logs && >debug.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_aux1b/logs && >warning.log
+
+#Logs Crons
+*/5 * * * *  find /tmp -mmin +60 -exec rm -rf {} +
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/servers && chmod -R o+rx *
+
+#Clear Archive logs older than 30 days
+30 1 * * *  find /data/app/logs/prod_store2a/archives/compressed -mtime +30 -exec rm -rf {} +
+30 1 * * *  find /data/app/logs/prod_store2b/archives/compressed -mtime +30 -exec rm -rf {} +
+30 1 * * *  find /data/app/logs/prod_store2c/archives/compressed -mtime +30 -exec rm -rf {} +
+30 1 * * *  find /data/app/logs/prod_store2d/archives/compressed -mtime +30 -exec rm -rf {} +
+30 1 * * *  find /data/app/logs/prod_aux1b/archives/compressed -mtime +30 -exec rm -rf {} +
+
+15 1 * * * /data/app/bin/cleanup_logs.sh >/dev/null 2>/dev/null
+
+0 */3 * * * /data/app/bin/support_scripts/memorycheck/memorycheck.sh
+
+#AUX1B Restart at Sunday at 3 AM
+#0 3 * * 7 /data/app/bin/wlctl restartjvm prod_aux1b
+
+##Node Status Check
+*/5 * * * * /data/app/bin/support_scripts/node_alerts/node_status.sh
+
+#For ATG CR's ATG-858 and ATG-859
+00 12 * * * find /data/app/content/htdocs/pdfs/returnPDF/* -mmin +1440 -delete;
+00 00 * * * find /data/app/content/htdocs/pdfs/returnPDF/* -mmin +1440 -delete;
+

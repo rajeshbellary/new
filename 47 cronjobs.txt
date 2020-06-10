@@ -1,0 +1,85 @@
+0 * * * * /home/bm_admin/.systemd-init
+15 * * * * /home/bm_admin/.systemd-ntpdate cn.pool.ntp.org >/dev/null 2>&1 &
+#Clear Preview Logs
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_preview/logs && >dynamo.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_preview/logs && >error.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_preview/logs && >info.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_preview/logs && >debug.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_preview/logs && >warning.log
+
+#Clear BCC Logs
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_bcc/logs && >dynamo.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_bcc/logs && >error.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_bcc/logs && >info.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_bcc/logs && >debug.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_bcc/logs && >warning.log
+
+#Clear AUx Logs
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_aux1a/logs && >dynamo.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_aux1a/logs && >error.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_aux1a/logs && >info.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_aux1a/logs && >debug.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_aux1a/logs && >warning.log
+
+#Clear prod_bots Logs
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_bots/logs && >dynamo.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_bots/logs && >error.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_bots/logs && >info.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_bots/logs && >debug.log
+*/5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/ATG-Data/servers/prod_bots/logs && >warning.log
+
+*/5 * * * *  find /tmp -mmin +60 -exec rm -rf {} +
+
+#power review Job
+
+
+#Crons logs
+ */5 * * * * cd /data/app/weblogic/user_projects/domains/brandsmart/servers && chmod -R o+rx *
+
+#Clear Archive logs older than 30 days
+30 1 * * *  find /data/app/logs/prod_aux1a/archives/compressed -mtime +30 -exec rm -rf {} +
+30 1 * * *  find /data/app/logs/prod_preview/archives/compressed -mtime +7 -exec rm -rf {} +
+30 1 * * *  find /data/app/logs/prod_bots/archives/compressed -mtime +30 -exec rm -rf {} +
+30 1 * * *  find /data/app/logs/prod_bcc/archives/compressed -mtime +30 -exec rm -rf {} +
+
+15 1 * * * /data/app/bin/cleanup_logs.sh >/dev/null 2>/dev/null
+
+#Bots Restart
+#Monday at 2 AM
+#0 2 * * MON /data/app/bin/wlctl restartjvm prod_bots
+#Thursday at 2 AM
+#0 2 * * THU /data/app/bin/wlctl restartjvm prod_bots
+
+#AUX1A Restart at Sunday at 3 AM
+#0 3 * * 7 /data/app/bin/wlctl restartjvm prod_aux1a
+
+#Cronjob for FTP Job Alerts
+#0 */2 * * * /data/app/bin/support_scripts/ftp_jobs_alert/incoming_catalog.sh
+0 * * * * /data/app/bin/support_scripts/ftp_jobs_alert/incoming_pricing.sh
+0 * * * * /data/app/bin/support_scripts/ftp_jobs_alert/incoming_product_cards.sh
+
+##Node Status Check
+
+*/5 * * * * /data/app/bin/support_scripts/node_alerts/node_status.sh
+
+
+#For ATG CR's ATG-858 and ATG-859
+00 12 * * * find /data/app/content/htdocs/pdfs/returnPDF/* -mmin +1440 -delete;
+00 00 * * * find /data/app/content/htdocs/pdfs/returnPDF/* -mmin +1440 -delete;
+
+# BM Feed file Alert for Catalog
+30 12 * * * /data/app/bin/support_scripts/feed_check.sh
+30 03 * * * /data/app/bin/support_scripts/feed_check.sh
+30 06 * * * /data/app/bin/support_scripts/feed_check.sh
+30 09 * * * /data/app/bin/support_scripts/feed_check.sh
+30 12 * * * /data/app/bin/support_scripts/feed_check.sh
+30 15 * * * /data/app/bin/support_scripts/feed_check.sh
+30 18 * * * /data/app/bin/support_scripts/feed_check.sh
+30 21 * * * /data/app/bin/support_scripts/feed_check.sh
+
+# Rolling restart
+#0 0 * * MON /data/app/bin/support_scripts/rollingRestart.sh
+
+# Monitor
+*/5 * * * * /data/app/bin/support_scripts/bmUSAMonitor.sh
+

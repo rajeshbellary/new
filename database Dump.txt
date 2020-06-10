@@ -1,0 +1,22 @@
+impdp  "'/ as sysdba'" dumpfile=DUMP_NEW_DIR:BRND_CORE_06-Sept-19.dmp REMAP_SCHEMA=BRND_CORE:BRND_UATCORE remap_tablespace=BRND_CORE:BRND_UATCORE table_exists_action=replace logfile=DUMP_NEW_DIR:brnd_UATcore.log
+
+impdp  "'/ as sysdba'" dumpfile=DUMP_NEW_DIR:BRND_CATA_06-Sept-19.dmp REMAP_SCHEMA=BRND_CATA:BRND_UATCATA remap_tablespace=BRND_CATA:BRND_UATCATA table_exists_action=replace logfile=DUMP_NEW_DIR:brnd_UATcata.log
+
+impdp  "'/ as sysdba'" dumpfile=DUMP_NEW_DIR:BRND_CATB_06-Sept-19.dmp REMAP_SCHEMA=BRND_CATB:BRND_UATCATB remap_tablespace=BRND_CATB:BRND_UATCATB table_exists_action=replace logfile=DUMP_NEW_DIR:brnd_UATcatb.log
+
+impdp  "'/ as sysdba'" dumpfile=DUMP_NEW_DIR:BRND_CATA_PRV_06-Sept-19.dmp REMAP_SCHEMA=BRND_CATA_PRV:BRND_DEVCATA_PRV remap_tablespace=BRND_CATA_PRV:BRND_DEVCATA_PRV table_exists_action=replace logfile=DUMP_NEW_DIR:brnd_DEVcata_prv.log
+
+impdp  "'/ as sysdba'" dumpfile=DUMP_NEW_DIR:BRND_PUB_06-Sept-19.dmp REMAP_SCHEMA=BRND_PUB:BRND_UATPUB remap_tablespace=BRND_PUB:BRND_UATPUB table_exists_action=replace logfile=DUMP_NEW_DIR:brnd_UATpub.log
+
+impdp  "'/ as sysdba'" dumpfile=DUMP_NEW_DIR:BRND_CATB_PRV_06-Sept-19.dmp REMAP_SCHEMA=BRND_CATB_PRV:BRND_UATCATB_PRV remap_tablespace=BRND_CATB_PRV:BRND_UATCATB_PRV table_exists_action=replace logfile=DUMP_NEW_DIR:brnd_UATcatb_prv.log
+
+impdp  "'/ as sysdba'" dumpfile=DUMP_NEW_DIR:BRND_CORE_PRV_06-Sept-19.dmp REMAP_SCHEMA=BRND_CORE_PRV:BRND_DEVCORE_PRV remap_tablespace=BRND_CORE_PRV:BRND_DEVCORE_PRV table_exists_action=replace logfile=DUMP_NEW_DIR:brnd_devcore_prv.log
+
+
+
+
+Select distinct owner from dba_objects;
+
+
+
+impdp  "'/ as sysdba'" dumpfile=DUMP_NEW_DIR:BRND_PUB_06-Sept-19.dmp REMAP_SCHEMA=BRND_PUB:BRND_UAT_PUB remap_tablespace=BRND_PUB:BRND_UAT_PUB table_exists_action=replace logfile=DUMP_NEW_DIR:brnd_UATpub.log

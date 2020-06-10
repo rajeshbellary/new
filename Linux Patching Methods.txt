@@ -1,0 +1,297 @@
+////////////////////////////////////////////////////////////////////////////////
+// MAINTENANCE: Interbond Corp of America DBA BrandsMartUSA / 191029-10977
+////////////////////////////////////////////////////////////////////////////////
+Maintenance Management Guidelines:
+
+https://one.rackspace.com/display/support/Ansible+Patching
+
+--------------------------------------------------------------------------------
+(1) Maintenance Overview:
+--------------------------------------------------------------------------------
+1.1) Maintenance Objective: Upgrade the available packages on devices
+
+  861444-ProdWebApp1.brandsmartusa.com
+  861447-ProdWebApp2.brandsmartusa.com
+  861449-ProdSearch1.brandsmartusa.com
+  861451-PRODSearchindex01.brandsmartusa.com
+  861454-UatWebApp1.brandsmartusa.com
+  861455-UatSearchIndex1.brandsmartusa.com
+  861456-DevWebApp1.brandsmartusa.com
+  861457-Build-Deploy.brandsmartusa.com
+  861458-nfs1.brandsmartusa.com
+  861526-db1.racscan.com
+  861529-db2.racscan.com
+  861531-UatDevDB.brandsmartusa.com
+
+1.2) Reason for the maintenance: Monthly patching
+
+1.3) What does the CUSTOMER want us to check to confirm the solution is functioning as expected?
+
+  None
+
+1.4) Primary Point of Contact:
+
+  Murali Dupam (dmurali@aienterprise.com) - +91-9986578034
+
+1.5) Secondary Point of Contact:
+
+  Gajendran Venkatrajan (vgajendran@AIENTERPRISE.COM) - +91-9886320057
+
+1.6) Owning department: Linux
+
+1.7) Departments involved: Linux
+
+1.8) Required Tech Level: L1
+
+1.9) Amount of time estimated for maintenance: 6.0 hour(s)
+
+1.10) Customer's maintenance window overrun preference:
+
+  No Overrun
+
+1.11) Login method/user account: rack
+
+--------------------------------------------------------------------------------
+(2) Maintenance Steps:
+--------------------------------------------------------------------------------
+2.1) <Linux> Call the Points of Contact and update the super ticket stating the maintenance is beginning.
+
+  *** DO NOT PROCEED UNTIL YOU HAVE CONTACTED THE CUSTOMER. ***
+
+  Contact Information:
+
+    Murali Dupam (dmurali@aienterprise.com) - +91-9986578034
+    Gajendran Venkatrajan (vgajendran@AIENTERPRISE.COM) - +91-9886320057
+
+2.2) <Linux> Suppress alerts for the devices which may be affected by the maintenance during the scheduled time frame.
+
+  * https://rba.rackspace.com/suppression-manager
+  * Import account and device information from this execution ticket
+
+  Title: Planned maintenance 191029-10977
+  Reason: 191029-10977 - Upgrade the available packages on devices 
+  861444-ProdWebApp1.brandsmartusa.com
+  861447-ProdWebApp2.brandsmartusa.com
+  861449-ProdSearch1.brandsmartusa.com
+  861451-PRODSearchindex01.brandsmartusa.com
+  861454-UatWebApp1.brandsmartusa.com
+  861455-UatSearchIndex1.brandsmartusa.com
+  861456-DevWebApp1.brandsmartusa.com
+  861457-Build-Deploy.brandsmartusa.com
+  861458-nfs1.brandsmartusa.com
+  861526-db1.racscan.com
+  861529-db2.racscan.com
+  861531-UatDevDB.brandsmartusa.com
+  Duration: 6.0 hour(s)
+  Devices: 861444,861447,861449,861451,861454,861455,861456,861457,861458,861526,861529,861531
+
+2.3) <Linux> Record suppression ID in the maintenance subticket.
+
+2.4) <Linux> On your workstation or the bastion, log the start of the maintenance.
+
+    $ ht 861444,861447,861449,861451,861454,861455,861456,861457,861458,861526,861529,861531 -C 'logger "Maintenance for ticket 191029-10977 started"'
+
+2.5) <Linux> On your workstation or the bastion, collect diagnostic information before running the maintenance.
+
+    $ wget https://iaw.rax.io/get/rs-configsnap/rs-configsnap -O ~/rs-configsnap && chmod 700 ~/rs-configsnap;
+    $ ~/rs-configsnap 861444,861447,861449,861451,861454,861455,861456,861457,861458,861526,861529,861531 191029-10977 pre
+
+2.6) <Linux> Perform VM Snapshots:
+
+2.6.1) <Linux> Log into the customer portal.
+
+2.6.2) <Linux> Click on Products -> Managed Virtualization.
+
+2.6.3) <Linux> Search for the desired device using the search field box.
+
+2.6.4) <Linux> After the device appears in the list, select the device detail link.
+
+2.6.5) <Linux> Scroll to the "Snapshot" section. Once the tab refreshes you will be displayed with the current VM snapshots, if any, and a "Create Snapshot" description input field.
+
+2.6.6) <Linux> Within the "Description" input box, supply a description for the snapshot being created (e.g. Before patching updates MM-DD-YYYY).
+
+2.6.7) <Linux> Once satisfied with the description, click the "Create Snapshot" button.
+
+2.7) <Linux> From a bastion server, configure ansible and verify that all hosts are accessible.
+
+    # export ANSIBLE_CALLBACK_WHITELIST=profile_tasks,timer; export ANSIBLE_HOST_KEY_CHECKING=False
+    # ht -A --ansibleargs='-m ping all' 861444,861447,861449,861451,861454,861455,861456,861457,861458,861526,861529,861531
+
+2.8) <Linux> Create a work directory and move into it.
+
+    # mkdir 191029-10977; cd $_
+
+2.9) <Linux> Download the automaint-ansible repository and move into the Patching directory.
+
+    # git clone git@github.rackspace.com:automaint/automaint-ansible.git
+    # cd automaint-ansible/Patching/
+
+2.10) <Linux> Create a playbook file named patching.yml on the bastion with the following content (beginning with --- and ending with ...):
+
+########################
+### Playbook Content ###
+########################
+---
+- name: Patching with reboot VM 191029-10977
+  hosts: 861457*,861458*
+  vars:
+    ticket_number: 191029-10977
+    yum_exclusions: N/A
+    repo_exclusions: newrel*,node*,mod-pagespee*,Wandisco*,jenki*
+    apt_exclusions: N/A
+  become: yes
+  become_user: root
+  become_flags: "{{ '-l' if ansible_become_method == 'su' else '-i' }}"
+  user: rack
+  serial: 10
+  roles:
+    - pre_checks
+    - yum_reboot
+
+- name: Patching no reboot VM 191029-10977
+  hosts: 861444*,861447*,861449*,861451*,861454*,861455*,861456*
+  vars:
+    ticket_number: 191029-10977
+    yum_exclusions: N/A
+    repo_exclusions: newrel*,node*,mod-pagespee*,Wandisco*,jenki*
+    apt_exclusions: N/A
+  become: yes
+  become_user: root
+  become_flags: "{{ '-l' if ansible_become_method == 'su' else '-i' }}"
+  user: rack
+  serial: 10
+  roles:
+    - pre_checks
+    - yum
+
+- name: Patching No Reboot Oracle Servers 191029-10977
+  hosts: 861526*,861529*,861531*
+  vars:
+    ticket_number: 191029-10977
+    yum_exclusions: kernel*,glibc*,gcc*,binutil*,kmod-oracleasm*
+    repo_exclusions: newrel*,node*,mod-pagespee*,Wandisco*,jenki*
+    apt_exclusions: N/A
+  become: yes
+  become_user: root
+  become_flags: "{{ '-l' if ansible_become_method == 'su' else '-i' }}"
+  user: rack
+  serial: 10
+  roles:
+    - pre_checks
+    - yum
+...
+########################
+##### End Content ######
+########################
+
+2.11) <Linux> Execute the playbook and log the output:
+
+    # screen -LS 191029-10977
+    # script -aefq 191029-10977-output --command "ht -A --playbook --ansibleargs='patching.yml' 861457,861458"
+    # script -aefq 191029-10977-output --command "ht -A --playbook --ansibleargs='patching.yml' 861444,861447,861449,861451,861454,861455,861456,861457,861458"
+    # script -aefq 191029-10977-output --command "ht -A --playbook --ansibleargs='patching.yml' 861526,861529,861531"
+
+2.12) <Linux> After the playbook is executed, review the log and paste the result in a comment on the maintenance ticket.
+
+    # less -R 191029-10977-output
+
+2.13) <Linux> On your workstation or the bastion, collect diagnostic information after the maintenance.
+
+    $ ~/rs-configsnap 861444,861447,861449,861451,861454,861455,861456,861457,861458,861526,861529,861531 191029-10977 post
+
+2.13.1) <Linux> If hammertime was unable to run the script on the server for
+  pre-checks, manually run the post-checks as so (run the following on the server):
+
+    # ~/configsnap -t 191029-10977 -p post -d /home/rack
+
+2.14) <Linux> On your workstation or the bastion, log completion of the maintenance.
+
+    $ ht 861444,861447,861449,861451,861454,861455,861456,861457,861458,861526,861529,861531 -C 'logger "Maintenance for ticket 191029-10977 completed"'
+
+2.14.1) <Linux> Post the diagnostic information to the maintenance subticket.
+
+2.15) <Linux> Remove Snapshots:
+
+2.15.1) <Linux> If everything is good, delete the snapshot of the virtual machine.
+
+2.15.1.1) <Linux> Select the snapshot from the displayed list.
+
+2.15.1.2) <Linux> You will be presented with two options under the actions section located to the right:
+
+2.15.1.2.1) <Linux> Delete: Removes the snapshot and merges all changes to the VM device
+
+2.15.1.2.2) <Linux> Revert: Restores the VM to the previous state, just before the snapshot was taken, but does not delete the snapshot.
+
+2.15.1.3) <Linux> Select "Delete".
+
+2.15.1.4) <Linux> The customer portal "Task" tab can be used to keep track of the snapshot deletion progress.
+
+2.16) <Linux> Update the super ticket and call the Points of Contact stating the maintenance is now complete.
+
+  Contact Information:
+
+    Murali Dupam (dmurali@aienterprise.com) - +91-9986578034
+    Gajendran Venkatrajan (vgajendran@AIENTERPRISE.COM) - +91-9886320057
+
+2.17) <Linux> If the suppression has not ended, remove the suppression at this time.
+
+--------------------------------------------------------------------------------
+(3) Escalation procedure:   //   *** DO NOT ABORT MAINTENANCE UNTIL FOLLOWED ***
+--------------------------------------------------------------------------------
+3.1) If this maintenance plan produces unexpected results and / or will exceed
+the scheduled time, escalate according to your department's technical and account
+team escalation procedures.
+
+3.2) If escalation does not provide a resolution, contact the customer by phone
+to determine how they would prefer to proceed.
+
+--------------------------------------------------------------------------------
+(4) Rollback procedures
+--------------------------------------------------------------------------------
+4.1) <Linux> For RHEL/CentOS, if only downgrading one package, use yum downgrade command and verify.
+
+    # yum downgrade package-name
+    # rpm -qa | grep package-name
+    # grep package-name /var/log/yum.log
+
+4.1.1) <Linux> If rolling back all transactions:
+
+    # yum history list
+    # yum history undo ID
+
+4.2) <Linux> Verify that you will boot into the older kernel by reviewing the grub.conf.
+
+  - Current kernel
+    # uname -r
+
+  - New kernel
+    # grubby --default-kernel
+
+4.3) <Linux> Reboot into the older kernel.
+
+    # shutdown -r now "Maintenance 191029-10977"
+
+4.4) <Linux> Verify the kernel version.
+
+    # uname -r
+
+4.5) <Linux> Restore from Snapshot:
+
+4.5.1) <Linux> If the above steps fail to resolve the problem, revert the snapshot of the virtual machine.
+
+4.5.1.1) <Linux> Select the snapshot from the displayed list.
+
+4.5.1.2) <Linux> You will be presented with two options under the actions section located to the right:
+
+4.5.1.2.1) <Linux> Delete: Removes the snapshot and merges all changes to the VM device
+
+4.5.1.2.2) <Linux> Revert: Restores the VM to the previous state, just before the snapshot was taken, but does not delete the snapshot.
+
+4.5.1.3) <Linux> Select "Revert".
+
+4.5.1.4) <Linux> The customer portal "Task" tab can be used to keep track of the snapshot reversion progress.
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+[/code]

@@ -1,0 +1,149 @@
+Hi All,
+ 
+I have implemented the task as follows. I have discussed to Gaja for the 2, 5, 6, 14 steps, will followed tomorrow as he said.
+ 
+1.            Update & Upgrade Installed Linux Packages.   
+Done--- # yum update -y  
+OutPut: 
+system restarted and version checked
+$ uname -r
+  2.6.32-754.23.1.el6.x86_64
+ 
+Need Input from Gaja to Implement   ( Need Packages List because there are high number of packages using below commands)
+2.            Remove unnecessary packages                                                                  
+---           # package-cleanup --leaves
+--- # package-cleanup --leaves --all
+                * Both command will provide list of packages which not using libraries and can be removed.
+ 
+3.            Password Rules
+Done--- # vim  /etc/login.defs
+                Config_Example
+                ---           PASS_MAX_DAYS 90
+                ---           PASS_MIN_DAYS 0
+                ---           PASS_MIN_LEN 9
+                ---           PASS_WARN_AGE 10
+ 
+a.            Detect Weak Passwords                                                                                
+Already Installed
+Done--- # yum install cracklib
+---           # echo "password" | cracklib-check
+OutPut: 
+$ rpm -qa |grep cracklib
+cracklib-2.8.16-4.el6.x86_64
+cracklib-dicts-2.8.16-4.el6.x86_64
+ 
+b.            Verify no account has empty passwords                
+Done--- # getent shadow | grep -Po '^[^:]*(?=::)'
+(nothing found user account with empty password)
+ 
+c.             Set Password Rules   
+d.            Set Password Expiration 
+Done--- # vim /etc/pam.d/system-auth
+                For Password Controll:
+                ---           # password requisite pam_cracklib.so try_first_pass retry=3 type= ucredit=-2 lcredit=-2 dcredit=-2 ocredit=-2
+                Deny Re-Used Passwords:
+                ---           # password sufficient pam_unix.so sha512 shadow nullok try_first_pass use_authtok remember=3
+ 
+4.            Disable USB Devices                                                                                                        
+### 1, create a config file:  
+                Done--- # cat /etc/modprobe.d/no-usb-storage.conf
+                                install usb-storage /bin/true
+###        2, remove libmtp and libgphoto2 package 
+                Already not Present--- # yum remove libmtp libgphoto2 -y
+ 
+Need Input from Gaja to Implement   (This give lot of files)
+5.            Detect all world-writable files
+                a.            Detect and modify the permissions
+----
+To List all writeable files in Directory
+---           # find / -type f -maxdepth 1 -writable
+To Change the Permission
+---           # chmod & chown
+ 
+Need Input from Gaja to Implement
+6.            Configure IPTables to block common attacks (Currently no iptables are configured)
+---           # iptables -I INPUT -p tcp --dport ssh -s x.x.x.x -J ACCEPT
+---           # iptabled -A INPUT -s any -J REJECT
+                # Allow only specific host for specific port or service.
+ 
+ 
+7.            Install Logwatch to monitor suspicious log messages (https://www.digitalocean.com/community/tutorials/how-to-install-and-use-logwatch-log-analyzer-and-reporter-on-a-vps#configuring-logwatch)
+Done--- # yum install -y logwatch
+Done--- # vim /usr/share/logwatch/default.conf/logwatch.conf
+ 
+8.            Enable auditd to check read/write events (audit-logs)
+Already Enabled---          * Service already enabled on DEV Envvironment
+---           * To Enabled specific audit log configure as mentioned in step-14th
+ 
+9.            Secure Apache Server by enabling TaceEnable off 
+Done--- # vim /etc/httpd/conf/http.conf
+                ADD or Modify Line
+                                # TraceEnable off
+                Save & Exit
+ 
+10.          Install and configure UFW (Uncomplicated Firewall)
+                a.            It will secure ssh, http, ftp (we can control unidentified downloads here)  [http, ftp, ssh Secure with TCP wrapper]
+Done--- # yum install --enablerepo="epel" ufw -y
+Done--- # ufw enable
+OutPut: 
+$ ufw status numbered
+Status: active
+     To                         Action      From
+     --                         ------      ----
+[ 1] SSH                        ALLOW IN    Anywhere
+[ 2] 224.0.0.251 mDNS           ALLOW IN    Anywhere
+[ 3] 22                         ALLOW IN    Anywhere
+[ 4] SSH (v6)                   ALLOW IN    Anywhere (v6)
+[ 5] ff02::fb mDNS              ALLOW IN    Anywhere (v6)
+[ 6] 22 (v6)                    ALLOW IN    Anywhere (v6)
+ 
+ 
+11.          SSH Configuration re-check         [sshd_config]
+Done--- # vim /etc/ssh/ssh_config
+                * Enabled only required options for SSH.
+OutPut: configuration is fine.
+ 
+12.          Disable Telnet                                    [Telnet sensor]
+Done--- # yum remove telnet
+                
+13.          Sysctl recheck with required security options
+Done--- a.            net.ipv4.ip_forward 0    # sysctl -w net.ipv4.ip_forward=0
+OutPut: Already set to '0'
+---           b.            etc                                          # vim /etc/sysctl.conf
+ 
+Need Input from Gaja to Implement
+14.          Lock user accounts after failed attempts with Fail2Ban     
+Done--- # vim  /etc/pam.d/system-auth
+Done--- # vim  /etc/pam.d/password-auth
+                
+                auth    required       pam_faillock.so preauth silent audit deny=3 unlock_time=600
+                auth    [default=die]  pam_faillock.so authfail audit deny=3 unlock_time=600                       
+                
+                * audit – enables user auditing.
+                * deny – used to define the number of attempts (3 in this case), after which the user account should be locked.
+                * unlock_time – sets the time (300 seconds = 5 minutes) for which the account should remain locked.
+ 
+-> The auth section in both files should have the content below arranged in this order:
+                auth        required      pam_env.so
+                auth        required      pam_faillock.so preauth silent audit deny=3 unlock_time=300
+                auth        sufficient    pam_unix.so  nullok  try_first_pass
+                auth        [default=die]  pam_faillock.so  authfail  audit  deny=3  unlock_time=300
+                auth        requisite     pam_succeed_if.so uid >= 1000 quiet_success
+                auth        required      pam_deny.so
+                
+                
+15.          Root user timeout configuration                                
+15.          Root user timeout configuration                
+Done--- # cd /etc/profile.d
+Done--- # vim log-out.sh
+#!/bin/bash
+# Log out in 2 minutes if the session is idle
+export TMOUT=300
+readonly TMOUT
+-------------------------------------------------------------------------------------------        
+16.          Scan for rootkits                                                                                                               # AntiVirus  (avast)
+                a.            server could be intercepting login details, concealing malware, providing a backdoor for an attacker, or even remotely controlling your server as part of a botnet
+                
+# yum install rkhunter
+# rkhunter -c
+Logs available at  /var/log/rkhunter/rkhunter.log

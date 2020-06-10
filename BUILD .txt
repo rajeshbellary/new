@@ -1,0 +1,102 @@
+DATESTART=`date`
+
+#Checking Branch Name
+echo "SVN_BRANCH_NAME: ${SVN_BRANCH_NAME}"
+
+if [ $SVN_BRANCH_NAME == "trunk" ]
+then 
+   cd_build_path="trunk"
+else
+   cd_build_path="branches/$SVN_BRANCH_NAME"
+fi   
+
+#Exporting Variable for code directory
+export cd_build_path
+
+#Cleaning up old ATG Build
+cd /data/app/release/brandsmart_ear && rm -rf BrandsMart.ear
+
+#Clean out ATG mess 
+cd /data/app/ATG/ATG11.2/home/servers && rm -rf aux* && rm -rf brnd* && rm -rf ca* && rm -rf dev* && rm -rf local* && rm -rf preview* && rm -rf prod* && rm -rf test*
+
+#Refresh ATG custom modules 
+cd /data/app/ATG/ATG11.2 && rm -rf BrandsMart
+
+#Cleaning up SVN Checkouts
+cd /data/app/svn/ && rm -rf branches && rm -rf trunk && mkdir -p /data/app/svn/${cd_build_path}
+
+
+# if No build number specified checkout Head Revision else from specific revision
+
+if [ -z  ${REVISION_NUMBER} ]
+then
+  echo "Checkout of the Branch $SVN_BRANCH_NAME on Head Revision" 
+  cd /data/app/svn/${cd_build_path} && svn co http://172.24.80.42/svn/brandsmart/${cd_build_path} .
+else
+  echo "Checking out ${SVN_BRANCH_NAME} on Revision - $REVISION_NUMBER"
+  cd /data/app/svn/${cd_build_path} && svn co -r ${REVISION_NUMBER} http://172.24.80.42/svn/brandsmart/${cd_build_path} .
+fi     
+export LDATE=`date +%m%d%Y_%H%M`
+
+sleep 10s
+
+
+########################################################
+###############Starting Build Process###################
+########################################################
+
+
+/bin/rm -f /tmp/revision.txt   \
+   && /usr/bin/id \
+   && source /etc/profile.d/bmenv.sh \
+   && cd /data/app/svn/${cd_build_path}  \
+   && touch /tmp/revision.txt && chmod 777 /tmp/revision.txt \
+   && cd /data/app/svn/${cd_build_path}/ && ant
+
+
+#Revision Variable   
+/bin/rm -f /tmp/rev  && touch /tmp/rev && chmod 777 /tmp/rev  \
+   && cd /data/app/svn/${cd_build_path} \
+   && svn info  |grep Revision: |cut -c11- > /tmp/rev   
+
+export REV=`cat /tmp/rev`
+
+#Exporting TAG Variable
+export TAGNAME=b${SVN_BRANCH_NAME}_rev${REV}_$LDATE
+
+# save current build number 
+echo $BUILD_NUMBER  \
+    > /data/app/release/builds/current.buildnumber
+
+cat /tmp/revision.txt
+
+# make a build number directory 
+/bin/mkdir -p /data/app/release/builds/${BUILD_NUMBER}/${TAGNAME}
+
+#Moving the EAR just built into backup folder
+cp -r /data/app/release/brandsmart_ear/*  /data/app/release/builds/${BUILD_NUMBER}/${TAGNAME}
+
+# Tarring and removing the EAR file
+cd /data/app/release/builds/${BUILD_NUMBER}/${TAGNAME} && tar -czf BrandsMart.ear.tar.gz BrandsMart.ear && rm -rf BrandsMart.ear
+
+#Copying Static Assets to Release folder
+cd /data/app/release/builds/${BUILD_NUMBER}/${TAGNAME} && cp -r /data/app/ATG/ATG11.2/BrandsMart/BM/j2ee-apps/bm/assets . && tar -czf assets.tar.gz assets && rm -rf assets
+
+#Copying Angular Assets from SVN and tarring them based on directory Name
+if [ -d "/data/app/svn/${cd_build_path}/brandsmart-angular" ]
+then 
+echo "Copying Angular Assets from SVN and tarring them"
+cd /data/app/release/builds/${BUILD_NUMBER}/${TAGNAME} && cp -r /data/app/svn/${cd_build_path}/brandsmart-angular . && tar -czf angular.tar.gz brandsmart-angular && rm -rf brandsmart-angular
+else
+   echo "Not Building Static Assets for Angular as Directory for Angular Assets is not present" 
+fi   
+
+
+# remove previous releases 
+#/data/app/bin/cleanup_releases.sh
+
+echo "Finished ..." 
+echo "Started ${DATESTART}"
+echo -n "Ended"
+date  
+ 

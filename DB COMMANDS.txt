@@ -1,0 +1,79 @@
+select count(*) from BM_PRD_CARD_TERM where card_code = '152' ;
+
+SELECT PRID FROM(
+select PRODUCT_ID PRID,START_DATE,card_code,COUNT(*) from BM_PRD_CARD_TERM
+GROUP BY PRODUCT_ID,START_DATE,card_code
+HAVING COUNT(*)>1);
+
+select count(*) from BM_PRD_CARD_TERM where card_code = '152' ;
+
+create table bm_prd10012020 as ;
+select * from BM_PRD_CARD_TERM where card_code = '152' ;
+
+insert into BM_PRD_CARD_TERM select * from brnd_uatcata.BM_PRD_CARD_TERM where card_code = '152';
+commit;
+
+
+select A.PRODUCT_ID,A.START_DATE,a.CARD_code from BM_PRD_CARD_TERM A,brnd_uatcata.BM_PRD_CARD_TERM B
+WHERE A.PRODUCT_ID=B.PRODUCT_ID
+AND A.START_DATE=B.START_DATE;
+WHERE (PRODUCT_ID,START_DATE) IN(select PRODUCT_ID,START_DATE from brnd_uatcata.BM_PRD_CARD_TERM where card_code = '152'
+AND PRODUCT_ID NOT IN(SELECT PRID FROM(
+select PRODUCT_ID PRID,START_DATE,card_code,COUNT(*) from BM_PRD_CARD_TERM
+GROUP BY PRODUCT_ID,START_DATE,card_code
+HAVING COUNT(*)>1)));
+
+
+
+select PRODUCT_ID from brnd_uatcata.BM_PRD_CARD_TERM where card_code = '152'
+AND PRODUCT_ID NOT IN(SELECT PRID FROM(
+select PRODUCT_ID PRID,START_DATE,card_code,COUNT(*) from BM_PRD_CARD_TERM
+GROUP BY PRODUCT_ID,START_DATE,card_code
+HAVING COUNT(*)>1));
+
+
+alter table BM_PRD_CARD_TERM disable constraint BM_PRD_CARD_TERM_FK1;
+
+select * from user_in;
+
+drop index BM_PRD_CARD_TERM_PK;
+
+
+select count(*) from BM_PRD_CARD_TERM where card_code = '152' ;
+
+create table bm_prd10012020 as ;
+select * from BM_PRD_CARD_TERM where card_code = '152' ;
+
+insert into BM_PRD_CARD_TERM (PRODUCT_ID, START_DATE, CARD_CODE, END_DATE, TERM_START_DATE, CARD_PROMO_TEXT) 
+select PRODUCT_ID, START_DATE, CARD_CODE, END_DATE, TERM_START_DATE, CARD_PROMO_TEXT from brnd_uatcata.BM_PRD_CARD_TERM where card_code = '152';
+commit;
+
+
+
+
+
+
+
+alter table BM_PRD_CARD_TERM disable constraint BM_PRD_CARD_TERM_PK;
+alter table BM_PRD_CARD_TERM disable constraint BM_PRD_CARD_TERM_FK1;
+
+DROP index BM_PRD_CARD_TERM_PK;
+
+select count(*) from BM_PRD_CARD_TERM where card_code = '152' ;
+
+
+alter table BM_PRD_CARD_TERM disable constraint BM_PRD_CARD_TERM_PK;
+alter table BM_PRD_CARD_TERM disable constraint BM_PRD_CARD_TERM_FK1;
+DROP index BM_PRD_CARD_TERM_PK;
+
+insert into BM_PRD_CARD_TERM (PRODUCT_ID, START_DATE, CARD_CODE, END_DATE, TERM_START_DATE, CARD_PROMO_TEXT) 
+select PRODUCT_ID, START_DATE, CARD_CODE, END_DATE, TERM_START_DATE, CARD_PROMO_TEXT from brnd_uatcata.BM_PRD_CARD_TERM where card_code = '152';
+commit;
+
+
+
+
+select count(*) from BM_PRD_ACC_GRP where card_code = '152' ;
+
+
+impdp \'/ as sysdba\' dumpfile=BM_PRD_CARD_TERMB_JAN_06_2020.dmp logfile=BM_PRD_CARD_TERMB.log tables=brnd_uatcatb.BM_PRD_CARD_TERM table_exists_action= REPLACE
